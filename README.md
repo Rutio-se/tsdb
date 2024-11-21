@@ -65,7 +65,7 @@ const test = async () => {
         const secondTime = new Date(firstTime.getTime()+1000);
         await tsdb.insertObject(myId, {a:2}, secondTime);
 
-        // Read out the object from the database
+        // Read out the object from the database in its most futuristic version
         const current = await tsdb.synthesizeObject(myId);
         console.log("At now", current);
 
