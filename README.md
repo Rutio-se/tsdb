@@ -26,6 +26,8 @@ In that case you also need to give the LOCK TABLES right to the user.
 
 3. Code example
 
+```
+
 const tsdb = require('rutio-tsdb');
 
 const test = () => {
@@ -60,6 +62,7 @@ const test = () => {
 
     // Note that repeated runs of this script will also print data from previous runs...
 }
+```
 
 ## Dependencies
 
