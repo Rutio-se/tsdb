@@ -86,10 +86,8 @@ const createTables = async () => {
         const q = `SHOW TABLES LIKE ${sqlapi.escape(table)};`;
         let result = await sqlapi.query(q);
         if (result.length != 0) {
-            console.log(`tsdb: Table ${table} for type ${type} exists`);
             continue;
         }
-        console.log(`tsdb: Table ${table} for type ${type} does not exist, creating...`);
         await createTable(table, type);
     }
 }
