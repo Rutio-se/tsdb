@@ -8,7 +8,7 @@ Time Series Database on top of sqlapi2.
 >
 > Query method exist for requesting an object state at a particular time, or for retreiving a particular series from an object.
 >
-> Objects in the database are represented with a 32bit key.
+> Objects in the database are identified with a 32bit key, use a separate table to map to these should you want other represetation.
 >
 > Database tables are optionally locked by setting the environment variable TSDB_LOCK_TABLES to non-zero value.
 >
@@ -24,7 +24,22 @@ The user must have CREATE access to the schema, since this will create the neces
 2. Optionally set up the TSDB_LOCK_TABLES in case you might have multiple clients running in parallell. 
 In that case you also need to give the LOCK TABLES right to the user.
 
-3. Code example
+3. Add rutio-tsdb to your package.json file
+
+```
+{
+  "dependencies": {
+    "rutio-tsdb" : "latest"
+  }
+}
+
+```
+
+4. Run yarn install or npm install from command line
+
+5. Code example (available in example.js)
+
+Copy this into your working folder
 
 ```
 
@@ -58,9 +73,10 @@ const test = async () => {
         const first = await tsdb.synthesizeObjectAt(myId, firstTime);
         console.log("At start time", first);
 
-        // Read out the time series for attribute d (note the prefix .) for my object
-        const series = await tsdb.getSeries(myId, '.d', secondTime, /* LIMIT*/ 3);
-        console.log("All values for .d", series);
+        // Read out the time series for attribute a (note the prefix .) for my object
+        const limit = 5;
+        const series = await tsdb.getSeries(myId, '.a', secondTime, limit);
+        console.log(`Last ${limit} values for .a`, series);
 
         // Note that repeated runs of this script will also print data from previous runs...
 
