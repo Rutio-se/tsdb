@@ -3,7 +3,7 @@
 
 // Time series database implementation on top of mysql.
 
-const sqlapi = require('./sqlapi');
+const sqlapi = require('rutio-sqlapi');
 const {isDate} = require('util/types');
 
 const MAX_FIELD_SIZE = 512;
