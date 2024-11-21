@@ -25,7 +25,7 @@ const test = async () => {
 
         // Insert an object in the database
         const firstTime = new Date();
-        await tsdb.insertObject(myId, {a:1, b:"Hello", c: true, d: new Date(), e:[1,2,3]} , firstTime);
+        await tsdb.insertObject(myId, {a:1, b:"Hello", c: true, d: firstTime, e:[1,2,3]} , firstTime);
 
         // Update one attribute of the object in the database with a new timestamp
         const secondTime = new Date(firstTime.getTime()+1000);
@@ -43,6 +43,10 @@ const test = async () => {
         const limit = 5;
         const series = await tsdb.getSeries(myId, '.a', secondTime, limit);
         console.log(`Last ${limit} values for .a`, series);
+
+        // Search for all items with field .d = firstTime
+        const found = await tsdb.search('.d', firstTime, secondTime, limit);
+        console.log(`Found items with .d=${firstTime.toISOString()}:`, found);
 
         // Note that repeated runs of this script will also print data from previous runs...
 

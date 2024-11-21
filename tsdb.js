@@ -315,6 +315,69 @@ exports.insertObject = async (node, value, timestamp) => {
     }
 }
 
+const updateValueTypes = (type, rows) => {
+    for (let r = 0; r < rows.length; ++r) {
+        rows[r].timestamp = new Date(rows[r].timestamp);
+        if (type === 'array')
+            rows[r].value = JSON.parse(rows[r].value);
+        if (type === 'date')
+            rows[r].value = new Date(rows[r].value);
+        if (type === 'boolean')
+            rows[r].value = rows[r].value ? true : false;
+    }
+}
+
+// We will be looking for the given value in a field, and return series data matching that value
+exports.search = async (field, value, when, limit) => {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10001)
+        throw {message:'tsdb: limit must be a natural number, less than 10001'};
+    if (typeof(field) !== 'string')
+        throw {message: 'tsdb: field must be string'};
+    if (!isDate(when))
+        throw {message: 'tsdb: when must be a date'};
+    let when_ms = when.getTime();
+
+    let value_reformed = undefined;
+    let type = undefined;
+    if (typeof(value) === "string") {
+
+    }
+    else if (typeof(value) === "number" && Number.isFinite(value)) {
+        value_reformed = value; // Encoded just the same
+        type = "number";
+    }
+    else if (typeof(value) === "boolean") {
+        value_reformed = value ? 1 : 0;
+        type = "boolean";
+    }
+    else if (isDate(value)) {
+        value_reformed = value.getTime();
+        type = "date";
+    }
+    else if (Array.isArray(value)) {
+        value_reformed = JSON.stringify(value);
+        type = "array";
+    }
+
+    if (value_reformed === undefined || type === undefined)
+        throw {message:`tsdb: Cannot search for value of type ` + typeof(value)}
+
+    // Possibly do a object search also, but would be quite expensive (make union of all results for each field in the object?)
+    try {
+        await lock("READ");
+        const table = getTableForType(type);
+        const query = `SELECT node, value, timestamp 
+                        FROM ${table} 
+                        WHERE field=${sqlapi.escape(field)} AND value=${sqlapi.escape(value_reformed)} AND timestamp <= ${sqlapi.escape(when_ms)} 
+                        ORDER BY timestamp DESC LIMIT ${sqlapi.escape(limit)};`;
+        const rows = await sqlapi.query(query);
+        updateValueTypes(type, rows);
+        return rows;
+    } finally {
+        await unlock();
+    }
+}
+
 exports.getSeries = async (node, field, when, limit) => {
     if (!Number.isInteger(node))
         throw {message:'tsdb: node must be integer'};
@@ -333,18 +396,13 @@ exports.getSeries = async (node, field, when, limit) => {
         for (let i = 0; i < types.length; ++i) {
             const type = types[i];
             const table = getTableForType(type);
-            const query = `SELECT value, timestamp from ${table} WHERE node=${sqlapi.escape(node)} AND field=${sqlapi.escape(field)} AND timestamp <= ${when_ms} ORDER BY timestamp DESC LIMIT ${limit};`;
+            const query = `SELECT value, timestamp 
+                            FROM ${table} 
+                            WHERE node=${sqlapi.escape(node)} AND field=${sqlapi.escape(field)} AND timestamp <= ${when_ms} 
+                            ORDER BY timestamp DESC LIMIT ${limit};`;
             const rows = await sqlapi.query(query);
             if (rows.length > 0) {
-                for (let r = 0; r < rows.length; ++r) {
-                    rows[r].timestamp = new Date(rows[r].timestamp);
-                    if (type === 'array')
-                        rows[r].value = JSON.parse(rows[r].value);
-                    if (type === 'date')
-                        rows[r].value = new Date(rows[r].value);
-                    if (type === 'boolean')
-                        rows[r].value = rows[r].value ? true : false;
-                }
+                updateValueTypes(type, rows);
                 return rows;
             }
         }
