@@ -94,7 +94,7 @@ const createTables = async () => {
 }
 
 const morerecents = async (table, node, field, timestamp_ms) => {
-    const q = `SELECT id FROM ${table} WHERE node=${node} AND timestamp > ${sqlapi.escape(timestamp_ms)} AND FIELD=${sqlapi.escape(field)} AND latest=1`;
+    const q = `SELECT id FROM ${table} WHERE node=${sqlapi.escape(node)} AND timestamp > ${sqlapi.escape(timestamp_ms)} AND FIELD=${sqlapi.escape(field)} AND latest=1`;
     return await sqlapi.query(q);
 }
 
