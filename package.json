@@ -1,6 +1,6 @@
 {
     "name": "rutio-tsdb",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "Time series database on top of sqlapi / mysql2",
     "main": "tsdb.js",
     "author": "Lars Mats",

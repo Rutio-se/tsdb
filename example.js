@@ -21,7 +21,7 @@ const test = async () => {
 
         // Objects are identified by a 32 bit integer unique ID (TBD: wrap this with something that maps other id formats to such integers?)
 
-        const myId = 1;
+        const myId = 'id-1';
 
         // Insert an object in the database
         const firstTime = new Date();

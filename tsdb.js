@@ -6,6 +6,7 @@
 const sqlapi = require('rutio-sqlapi');
 const {isDate} = require('util/types');
 
+const MAX_ID_SIZE = 128;
 const MAX_FIELD_SIZE = 512;
 const MAX_STRING_SIZE = 4096;
 const MAX_ARRAY_SIZE = 16384;
@@ -63,7 +64,7 @@ const createTable = async (name, type) => {
         throw {message:`tsdb: No storage type defined for type ` + type};
     const q = `CREATE TABLE ${name} (
         \`id\` int unsigned NOT NULL AUTO_INCREMENT,
-        \`node\` int,
+        \`node\` varchar(${MAX_ID_SIZE}),
         \`value\` ${valuetype},
         \`field\` varchar(${MAX_FIELD_SIZE}),
         \`timestamp\` bigint,
@@ -175,10 +176,18 @@ const insertCheckedObject = async (node, field, value, timestamp) => {
     await Promise.all(promises);
 }
 
+const isNode = (node) => {
+    if (typeof(node) === "number")
+        return true;
+    if (typeof(node) === "string" && node.length > 0 && node.length < MAX_ID_SIZE)
+        return true;
+    return false;
+}
+
 const insert = async (node, field, value, timestamp) => {
     if (!isDate(timestamp))
         throw {message: 'tsdb: timestamp of type ' + typeof(timestamp) + " is not a date"};
-    if (!Number.isInteger(node))
+    if (!isNode(node))
         throw {message: "tsdb: node of type " + typeof(node) + " is not an integer number"};
 
     if (typeof(field) !== 'string' || field.length == 0 || field.length > MAX_FIELD_SIZE)
@@ -250,8 +259,8 @@ const convertToObject = (mapObject) => {
 
 
 const synthesizeObjectParameterized = async (node, condition) => {
-    if (!Number.isInteger(node))
-        throw {message:"tsdb: synthesizeObject: node parameter must be an integer."};
+    if (!isNode(node))
+        throw {message:"tsdb: synthesizeObject: node parameter is invalid."};
     
     const mapLatest = {};
     const types = Object.keys(TS_TABLES);
@@ -378,8 +387,8 @@ exports.search = async (field, value, when, limit) => {
 }
 
 exports.getSeries = async (node, field, when, limit) => {
-    if (!Number.isInteger(node))
-        throw {message:'tsdb: node must be integer'};
+    if (!isNode(node))
+        throw {message:'tsdb: invalid format for node'};
     if (!Number.isInteger(limit) || limit < 1 || limit > 10001)
         throw {message:'tsdb: limit must be a natural number, less than 10001'};
     if (typeof(field) !== 'string')
@@ -412,8 +421,8 @@ exports.getSeries = async (node, field, when, limit) => {
 }
 
 exports.exists = async (node) => {
-    if (!Number.isInteger(node))
-        throw {message:'tsdb: node must be integer'};
+    if (!isNode(node))
+        throw {message:'tsdb: node is in invalid format'};
     try {
         lock("READ");
         // Return true if any of the DB tables to contain the selected node
@@ -442,8 +451,8 @@ exports.exists = async (node) => {
 exports.remove = async (node, sure) => {
     if (!sure)
         throw {message:'tsdb: do not delete if not sure'};
-    if (!Number.isInteger(node))
-        throw {message:'tsdb: node must be integer'};
+    if (!isNode(node))
+        throw {message:'tsdb: invalid format for node'};
     try {
         lock("WRITE");
         // Return true if any of the DB tables to contain the selected node
