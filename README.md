@@ -8,7 +8,8 @@ Time Series Database on top of sqlapi2.
 >
 > Query method exist for requesting an object state at a particular time, or for retreiving a particular series from an object.
 >
-> Objects in the database are identified with a 32bit key, use a separate table to map to these should you want other represetation.
+> Objects in the database are identified with a number or string, supposedly uniquely identifying an object (for legacy reasons
+> this key is called node in the code, since it originally was intended to represent measurement nodes in a network).
 >
 > Database tables are optionally locked by setting the environment variable TSDB_LOCK_TABLES to non-zero value.
 >
