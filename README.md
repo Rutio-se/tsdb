@@ -30,38 +30,47 @@ In that case you also need to give the LOCK TABLES right to the user.
 
 const tsdb = require('rutio-tsdb');
 
-const test = () => {
-    // Create the required tables. They will be prefixed by example and named example_ts_number, example_ts_string, 
-    // example_ts_array, example_ts_date and example_ts_boolean, where example is from the script below. This prefixing
-    // enables storage of different and disjoint series in the same database.
-    await tsdb.initialize('example'); 
+const test = async () => {
 
-    // Objects are identified by a 32 bit integer unique ID (TBD: wrap this with something that maps other id formats to such integers?)
+    try {
+        // Create the required tables. They will be prefixed by example and named example_ts_number, example_ts_string, 
+        // example_ts_array, example_ts_date and example_ts_boolean, where example is from the script below. This prefixing
+        // enables storage of different and disjoint series in the same database.
+        await tsdb.initialize('example'); 
 
-    const myId = 1;
+        // Objects are identified by a 32 bit integer unique ID (TBD: wrap this with something that maps other id formats to such integers?)
 
-    // Insert an object in the database
-    const firstTime = new Date();
-    await tsdb.insertObject(myId, {a:1, b:"Hello", c: true, d: new Date(), e:[1,2,3]} , firstTime);
+        const myId = 1;
 
-    // Update one attribute of the object in the database with a new timestamp
-    const secondTime = new Date(firstTime.getTime()+1000);
-    await tsdb.insertObject(myId, {a:2}, secondTime);
+        // Insert an object in the database
+        const firstTime = new Date();
+        await tsdb.insertObject(myId, {a:1, b:"Hello", c: true, d: new Date(), e:[1,2,3]} , firstTime);
 
-    // Read out the object from the database
-    const current = await tsdb.synthesizeObject(myId);
-    console.log("At now", current);
+        // Update one attribute of the object in the database with a new timestamp
+        const secondTime = new Date(firstTime.getTime()+1000);
+        await tsdb.insertObject(myId, {a:2}, secondTime);
 
-    // Read out the object state from first time instead
-    const first = await tsdb.synthesizeObjectAt(myId, firstTime);
-    console.log("At start time", first);
+        // Read out the object from the database
+        const current = await tsdb.synthesizeObject(myId);
+        console.log("At now", current);
 
-    // Read out the time series for attribute d (note the prefix .) for my object
-    const series = await tsdb.getSeries(myId, '.d', secondTime, /* LIMIT*/ 3);
-    console.log("All values for .d", series);
+        // Read out the object state from first time instead
+        const first = await tsdb.synthesizeObjectAt(myId, firstTime);
+        console.log("At start time", first);
 
-    // Note that repeated runs of this script will also print data from previous runs...
+        // Read out the time series for attribute d (note the prefix .) for my object
+        const series = await tsdb.getSeries(myId, '.d', secondTime, /* LIMIT*/ 3);
+        console.log("All values for .d", series);
+
+        // Note that repeated runs of this script will also print data from previous runs...
+
+    } catch (e) {
+        console.log(e);
+    }
 }
+
+test();
+
 ```
 
 ## Dependencies
