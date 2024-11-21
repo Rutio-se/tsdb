@@ -412,3 +412,53 @@ exports.getSeries = async (node, field, when, limit) => {
         unlock();
     }
 }
+
+exports.exists = async (node) => {
+    if (!Number.isInteger(node))
+        throw {message:'tsdb: node must be integer'};
+    try {
+        lock("READ");
+        // Return true if any of the DB tables to contain the selected node
+        const types = Object.keys(TS_TABLES);
+        for (let i = 0; i < types.length; ++i) {
+            const type = types[i];
+            const table = getTableForType(type);
+            const query = `SELECT id 
+                            FROM ${table} 
+                            WHERE node=${sqlapi.escape(node)} 
+                            LIMIT 1;`;
+            const rows = await sqlapi.query(query);
+            if (rows.length > 0) {
+                return rows;
+            }
+        }
+        return false;
+    } finally {
+        unlock();
+    }    
+}
+
+// Design consideration: Record a special value to mark deletion or delete the node?
+// The overhead cost of recording such a value would be quite high, so instead we delete the 
+// nodes values for all tables.
+exports.remove = async (node, sure) => {
+    if (!sure)
+        throw {message:'tsdb: do not delete if not sure'};
+    if (!Number.isInteger(node))
+        throw {message:'tsdb: node must be integer'};
+    try {
+        lock("WRITE");
+        // Return true if any of the DB tables to contain the selected node
+        const types = Object.keys(TS_TABLES);
+        for (let i = 0; i < types.length; ++i) {
+            const type = types[i];
+            const table = getTableForType(type);
+            const query = `DELETE 
+                            FROM ${table} 
+                            WHERE node=${sqlapi.escape(node)};`;
+            await sqlapi.query(query);
+        }
+    } finally {
+        unlock();
+    }    
+}
