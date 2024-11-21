@@ -65,8 +65,8 @@ const createTable = async (name, type) => {
     const q = `CREATE TABLE ${name} (
         \`id\` int unsigned NOT NULL AUTO_INCREMENT,
         \`node\` varchar(${MAX_ID_SIZE}),
-        \`value\` ${valuetype},
         \`field\` varchar(${MAX_FIELD_SIZE}),
+        \`value\` ${valuetype},
         \`timestamp\` bigint,
         \`latest\` tinyint,
         PRIMARY KEY (\`id\`),
