@@ -340,7 +340,8 @@ exports.search = async (field, value, when, limit) => {
     let value_reformed = undefined;
     let type = undefined;
     if (typeof(value) === "string") {
-
+        value_reformed = value;
+        type = "string";
     }
     else if (typeof(value) === "number" && Number.isFinite(value)) {
         value_reformed = value; // Encoded just the same
