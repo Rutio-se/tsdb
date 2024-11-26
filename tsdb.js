@@ -177,7 +177,7 @@ const insertCheckedObject = async (node, field, value, timestamp) => {
 }
 
 const isNode = (node) => {
-    if (typeof(node) === "number")
+    if (typeof(node) === "number" && Number.isFinite(node))
         return true;
     if (typeof(node) === "string" && node.length > 0 && node.length < MAX_ID_SIZE)
         return true;
@@ -334,18 +334,9 @@ const updateValueTypes = (type, rows) => {
     }
 }
 
-// We will be looking for the given value in a field, and return series data matching that value
-exports.search = async (field, value, when, limit) => {
-    if (!Number.isInteger(limit) || limit < 1 || limit > 10001)
-        throw {message:'tsdb: limit must be a natural number, less than 10001'};
-    if (typeof(field) !== 'string')
-        throw {message: 'tsdb: field must be string'};
-    if (!isDate(when))
-        throw {message: 'tsdb: when must be a date'};
-    let when_ms = when.getTime();
-
+const getTypeValueReformed = (value) => {
+    let type = undefined; 
     let value_reformed = undefined;
-    let type = undefined;
     if (typeof(value) === "string") {
         value_reformed = value;
         type = "string";
@@ -366,6 +357,22 @@ exports.search = async (field, value, when, limit) => {
         value_reformed = JSON.stringify(value);
         type = "array";
     }
+    return {type, value_reformed};
+}
+
+// We will be looking for the given value in a field, and return series data matching that value
+exports.search = async (field, value, when, limit, offset) => {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10000)
+        throw {message:'tsdb: limit must be a natural number, less than 10001'};
+    if (!Number.isInteger(offset) || offset < 0 || offset > 10000)
+        throw {message:'tsdb: offset must be integer, less than 10001'};
+    if (typeof(field) !== 'string')
+        throw {message: 'tsdb: field must be string'};
+    if (!isDate(when))
+        throw {message: 'tsdb: when must be a date'};
+    let when_ms = when.getTime();
+
+    let {type, value_reformed} = getTypeValueReformed(value);
 
     if (value_reformed === undefined || type === undefined)
         throw {message:`tsdb: Cannot search for value of type ` + typeof(value)}
@@ -377,12 +384,58 @@ exports.search = async (field, value, when, limit) => {
         const query = `SELECT node, value, timestamp 
                         FROM ${table} 
                         WHERE field=${sqlapi.escape(field)} AND value=${sqlapi.escape(value_reformed)} AND timestamp <= ${sqlapi.escape(when_ms)} 
-                        ORDER BY timestamp DESC LIMIT ${sqlapi.escape(limit)};`;
+                        ORDER BY timestamp DESC LIMIT ${sqlapi.escape(limit)} OFFSET ${sqlapi.escape(offset)};`;
         const rows = await sqlapi.query(query);
         updateValueTypes(type, rows);
         return rows;
     } finally {
         await unlock();
+    }
+}
+
+exports.allLatest = async (field, type, limit, offset) => {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10000)
+        throw {message:'tsdb: limit must be a natural number, less than 10001'};
+    if (!Number.isInteger(offset) || offset < 0 || offset > 10000)
+        throw {message:'tsdb: offset must be integer, less than 10001'};
+    if (typeof(field) !== 'string')
+        throw {message: 'tsdb: field must be string'};
+    if (!TS_TABLES.hasOwnProperty(type))
+        throw {message: `tsdb: unknown type ${type}`}
+
+    try {
+        lock("READ");
+        const q = `SELECT node, value, timestamp FROM ${getTableForType(type)} 
+                    WHERE field=${sqlapi.escape(field)} AND latest=1 ORDER BY node ASC
+                    LIMIT ${sqlapi.escape(limit)} OFFSET ${sqlapi.escape(offset)};`;
+        const rows = await sqlapi.query(q);
+        return rows;
+    } finally {
+        unlock();
+    }
+}
+
+exports.allLatestWithValue = async (field, value, limit, offset) => {
+    let {type, value_reformed} = getTypeValueReformed(value);
+    if (value_reformed === undefined || type === undefined)
+        throw {message:`tsdb: Cannot search for value of type ` + typeof(value)}
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10000)
+        throw {message:'tsdb: limit must be a natural number, less than 10001'};
+    if (!Number.isInteger(offset) || offset < 0 || offset > 10000)
+        throw {message:'tsdb: offset must be integer, less than 10001'};
+    if (typeof(field) !== 'string')
+        throw {message: 'tsdb: field must be string'};
+
+    try {
+        lock("READ");
+        const q = `SELECT node, timestamp FROM ${getTableForType(type)} 
+                    WHERE field=${sqlapi.escape(field)} AND value=${sqlapi.escape(value_reformed)} AND latest=1 ORDER BY node ASC
+                    LIMIT ${sqlapi.escape(limit)} OFFSET ${sqlapi.escape(offset)};`;
+        const rows = await sqlapi.query(q);
+        return rows;
+    } finally {
+        unlock();
     }
 }
 

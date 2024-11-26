@@ -22,14 +22,16 @@ const test = async () => {
         // Objects are identified by a 32 bit integer unique ID (TBD: wrap this with something that maps other id formats to such integers?)
 
         const myId = 'id-1';
+        const myId2 = 'id-2';
 
         // Insert an object in the database
         const firstTime = new Date();
         await tsdb.insertObject(myId, {a:1, b:"Hello", c: true, d: firstTime, e:[1,2,3]} , firstTime);
+        await tsdb.insertObject(myId2, {a:2, b:"World", c: false, d: firstTime, e:[4,5,6]} , firstTime);
 
         // Update one attribute of the object in the database with a new timestamp
         const secondTime = new Date(firstTime.getTime()+1000);
-        await tsdb.insertObject(myId, {a:2}, secondTime);
+        await tsdb.insertObject(myId, {a:3}, secondTime);
 
         // Read out the object from the database
         const current = await tsdb.synthesizeObject(myId);
@@ -41,12 +43,25 @@ const test = async () => {
 
         // Read out the time series for attribute a (note the prefix .) for my object
         const limit = 5;
+        const offset = 0;
         const series = await tsdb.getSeries(myId, '.a', secondTime, limit);
         console.log(`Last ${limit} values for .a`, series);
 
         // Search for all items with field .d = firstTime
-        const found = await tsdb.search('.d', firstTime, secondTime, limit);
-        console.log(`Found items with .d=${firstTime.toISOString()}:`, found);
+        const found = await tsdb.search('.d', firstTime, secondTime, limit, offset);
+        console.log(`Up to ${limit} found items with .d=${firstTime.toISOString()}:`, found);
+
+        // Select all nodes with a value for a as latest value
+        const allA = await tsdb.allLatest('.a', "number", limit, offset);
+        console.log(`Up to ${limit} nodes with an .a attribute of type number`, allA);
+
+        // Select all nodes with a value for a as latest value
+        const allBstring = await tsdb.allLatest('.b', "string", limit, offset);
+        console.log(`Up to ${limit} nodes with an .b attribute of type string`, allBstring);
+        
+        // Select all nodes with the value 2 for .a as latest value
+        const allA2 = await tsdb.allLatestWithValue('.a', 2, limit, offset);
+        console.log(`Up to ${limit} nodes with an .a attribute with value 2`, allA2);
 
         // Note that repeated runs of this script will also print data from previous runs...
 
