@@ -40,6 +40,8 @@ const test = async () => {
         // Read out the object state from first time instead
         const first = await tsdb.synthesizeObjectAt(myId, firstTime);
         console.log("At start time", first);
+        const firstNoTS = await tsdb.synthesizeObjectAt(myId, firstTime, true);
+        console.log("At start time, without timestamps", firstNoTS);
 
         // Read out the time series for attribute a (note the prefix .) for my object
         const limit = 5;

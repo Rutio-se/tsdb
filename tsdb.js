@@ -216,49 +216,55 @@ const insert = async (node, field, value, timestamp) => {
     }
 }
 
-const convertToObject = (mapObject) => {
-    let keys = Object.keys(mapObject).sort();
+const convertToObject = (mapObject, noTimestamp) => {
     let result = {};
-    for (let i = 0; i < keys.length; ++i) {
-        let key = keys[i];
-        const path = key.split('.');
-        let o = result;
+    try {
+        let keys = Object.keys(mapObject).sort();
+        for (let i = 0; i < keys.length; ++i) {
+            let key = keys[i];
+            const path = key.split('.');
+            let o = result;
 
-        // Create object substructure if required
-        for (let p = 1; p < path.length-1; ++p) {
-            const field = path[p];
-            if (o.hasOwnProperty(field)) {
-                if (typeof(o[field]) !== 'object') {
-                    // Strange case, there is both object and none-object at this location
-                    throw {message:"tsdb: the object has value and object at same location: " + key + " o[p]:" + o[p]};
+            // Create object substructure if required
+            for (let p = 1; p < path.length-1; ++p) {
+                const field = path[p];
+                if (o.hasOwnProperty(field)) {
+                    if (typeof(o[field]) !== 'object') {
+                        // Strange case, there is both object and none-object at this location
+                        throw {message:"tsdb: the object has value and object at same location: " + key + " o[p]:" + o[p]};
+                    }
+                    o = o[field];
                 }
-                o = o[field];
+                else {
+                    const tmp = {}
+                    o[path[p]] = tmp;
+                    o = tmp;
+                } 
             }
-            else {
-                const tmp = {}
-                o[path[p]] = tmp;
-                o = tmp;
-            } 
-        }
 
-        const type = mapObject[key].type;
-        const timestamp = new Date(mapObject[key].timestamp);
-        if (type === 'number' || type === 'string')
-            o[path[path.length-1]] = {value:mapObject[key].value, timestamp};
-        else if (type === 'boolean')
-            o[path[path.length-1]] = {value:mapObject[key].value ? true : false, timestamp};
-        else if (type === 'date')
-            o[path[path.length-1]] = {value: new Date(mapObject[key].value), timestamp};
-        else if (type === 'array')
-            o[path[path.length-1]] = {value:JSON.parse(mapObject[key].value), timestamp};
-        else 
-            throw {message: "tsdb: Cannot convert " + type + " to object"};
+            const type = mapObject[key].type;
+            const timestamp = new Date(mapObject[key].timestamp);
+            if (type === 'number' || type === 'string')
+                o[path[path.length-1]] = noTimestamp ? mapObject[key].value : {value:mapObject[key].value, timestamp};
+            else if (type === 'boolean')
+                o[path[path.length-1]] = noTimestamp ? (mapObject[key].value ? true : false) : {value:mapObject[key].value ? true : false, timestamp};
+            else if (type === 'date')
+                o[path[path.length-1]] = noTimestamp ? new Date(mapObject[key].value) : {value: new Date(mapObject[key].value), timestamp};
+            else if (type === 'array')
+                o[path[path.length-1]] = noTimestamp ? JSON.parse(mapObject[key].value) : {value:JSON.parse(mapObject[key].value), timestamp};
+            else 
+                throw {message: "tsdb: Cannot convert " + type + " to object"};
+        }
+    }
+    catch (e) {
+        console.log(e);
+        throw e;
     }
     return result;
 }
 
 
-const synthesizeObjectParameterized = async (node, condition) => {
+const synthesizeObjectParameterized = async (node, condition, noTimestamp) => {
     if (!isNode(node))
         throw {message:"tsdb: synthesizeObject: node parameter is invalid."};
     
@@ -269,34 +275,40 @@ const synthesizeObjectParameterized = async (node, condition) => {
         const type = types[i];
         const table = getTableForType(type);
         const asyncpart = async () => {
-            const rows = await sqlapi.query(`SELECT field, value, timestamp FROM ${table} WHERE node=${sqlapi.escape(node)} AND ${condition} ORDER BY timestamp ASC`);
-            for (let r = 0; r < rows.length; ++r) {
-                const row = rows[r];
-                mapLatest[row.field] = {value: row.value, type, timestamp: row.timestamp};
+            try {
+                const rows = await sqlapi.query(`SELECT field, value, timestamp FROM ${table} WHERE node=${sqlapi.escape(node)} AND ${condition} ORDER BY timestamp ASC`);
+                for (let r = 0; r < rows.length; ++r) {
+                    const row = rows[r];
+                    mapLatest[row.field] = {value: row.value, type, timestamp: row.timestamp};
+                }
+            } catch (e) {
+                console.log("dbts", e);
+                throw e;
             }
         }
         promises.push(asyncpart());
     }
 
     await Promise.all(promises);
-    const synthesized = convertToObject(mapLatest);
+    const synthesized = convertToObject(mapLatest, noTimestamp);
+
     return synthesized;
 }
 
-exports.synthesizeObjectAt = async (node, date) => {
+exports.synthesizeObjectAt = async (node, date, noTimestamp) => {
     try {
         await lock("READ");
         const date_ms = date.getTime();
-        return synthesizeObjectParameterized(node, "timestamp<="+date_ms);
+        return synthesizeObjectParameterized(node, "timestamp<="+date_ms, noTimestamp);
     } finally {
         await unlock();
     }
 }
 
-exports.synthesizeObject = async (node) => {
+exports.synthesizeObject = async (node, noTimestamp) => {
     try {
         await lock("READ");
-        return synthesizeObjectParameterized(node, "latest<>0");
+        return synthesizeObjectParameterized(node, "latest<>0", noTimestamp);
     } finally {
         await unlock();
     }
