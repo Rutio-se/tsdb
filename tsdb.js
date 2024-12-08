@@ -209,7 +209,7 @@ const insert = async (node, field, value, timestamp) => {
     } else if (Array.isArray(value)) {
         // Inserting an array in database
         await (insertCheckedArray(node, field, value, timestamp));
-    } else if (typeof(value == 'object')) {
+    } else if (typeof(value) === 'object') {
         insertCheckedObject(node, field, value, timestamp);
     } else {
         throw {message: 'tdsb: no support for value of type ' + typeof(value)}
