@@ -399,7 +399,7 @@ exports.search = async (field, value, when, limit, offset) => {
                         ORDER BY timestamp DESC LIMIT ${sqlapi.escape(limit)} OFFSET ${sqlapi.escape(offset)};`;
         const rows = await sqlapi.query(query);
         updateValueTypes(type, rows);
-        for (let i = 0; i < rows.count; ++i) {
+        for (let i = 0; i < rows.length; ++i) {
             rows[i].timestamp = new Date(rows[i].timestamp);
         }
         return rows;
@@ -424,7 +424,7 @@ exports.allLatest = async (field, type, limit, offset) => {
                     WHERE field=${sqlapi.escape(field)} AND latest=1 ORDER BY node ASC
                     LIMIT ${sqlapi.escape(limit)} OFFSET ${sqlapi.escape(offset)};`;
         const rows = await sqlapi.query(q);
-        for (let i = 0; i < rows.count; ++i) {
+        for (let i = 0; i < rows.length; ++i) {
             rows[i].timestamp = new Date(rows[i].timestamp);
         }
         return rows;
